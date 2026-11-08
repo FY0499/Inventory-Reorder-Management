@@ -1,0 +1,412 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        96
+      ],
+      "id": "c565a0c8-0739-40ae-9d61-0ddc865aa417",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1tNpbyN04cbiNbXUThdbBt1S8R351cYfT5pQem9haLQ0",
+          "mode": "list",
+          "cachedResultName": "Inventory",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tNpbyN04cbiNbXUThdbBt1S8R351cYfT5pQem9haLQ0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1tNpbyN04cbiNbXUThdbBt1S8R351cYfT5pQem9haLQ0/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "b1fbd2d7-9cd0-4865-aa1f-230d7cc65207",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "z8CNmElJqux4zhsn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1uaeqS8YiTsVvk_b06jKJ6II8t3OFVvAoI6hebDMfmQ8",
+          "mode": "list",
+          "cachedResultName": "Sales History",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uaeqS8YiTsVvk_b06jKJ6II8t3OFVvAoI6hebDMfmQ8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1uaeqS8YiTsVvk_b06jKJ6II8t3OFVvAoI6hebDMfmQ8/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        192
+      ],
+      "id": "fcc30af4-107e-49c3-96b8-ed67212954c0",
+      "name": "Get row(s) in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "z8CNmElJqux4zhsn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        448,
+        96
+      ],
+      "id": "1fc24e7d-d1aa-4f30-8a17-7b87b12a78d5",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// بيانات المخزون\nconst inventory = $('Get row(s) in sheet').all().map(item => item.json);\n\n// بيانات المبيعات\nconst sales = $('Get row(s) in sheet1').all().map(item => item.json);\n\nconst results = inventory.map(item => {\n\n  // نجيب كل عمليات البيع الخاصة بنفس المنتج\n  const productSales = sales.filter(sale => sale.sku === item.sku);\n\n  // حساب إجمالي الكمية المباعة\n  const totalSold = productSales.reduce((sum, sale) => {\n    const soldQty = Number(\n      sale.qtySold ??\n      sale.quantitySold ??\n      sale.sold ??\n      sale.sales ??\n      sale.quantity ??\n      0\n    );\n\n    return sum + soldQty;\n  }, 0);\n\n  // عدد الأيام المسجلة للمبيعات\n  const daysTracked = productSales.length || 1;\n\n  // معدل البيع اليومي\n  const avgDailySales = totalSold / daysTracked;\n\n  // عدد الأيام المتبقية قبل نفاد المخزون\n  const daysUntilStockout =\n    avgDailySales > 0\n      ? Number(item.quantity) / avgDailySales\n      : 999;\n\n  return {\n    sku: item.sku,\n    productName: item.productName,\n    currentQty: Number(item.quantity),\n    avgDailySales: Number(avgDailySales.toFixed(2)),\n    daysUntilStockout: Number(daysUntilStockout.toFixed(1))\n  };\n\n})\n\n// نرسل فقط المنتجات التي ستنفد خلال أقل من 14 يوم\n.filter(item => item.daysUntilStockout < 14);\n\nreturn results.map(item => ({\n  json: item\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        96
+      ],
+      "id": "a1487bed-2990-4d42-a495-ebabf22f6f37",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=أنت خبير إدارة مخزون. بناءً على البيانات التالية، اقترح كمية إعادة الطلب المناسبة واشرح السبب باختصار. أعد النتيجة كـ JSON فقط: {\"reorder_quantity\": 0, \"urgency\": \"عاجل/عادي\", \"reasoning\": \"...\"}\n\nالمنتج: {{ $json.productName }}\nالكمية الحالية: {{ $json.currentQty }}\nمعدل البيع اليومي: {{ $json.avgDailySales }}\nأيام متبقية حتى النفاذ: {{ $json.daysUntilStockout }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        896,
+        96
+      ],
+      "id": "ffad9cd4-ee20-4f6a-8ed7-6a8acec08e08",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5",
+          "cachedResultName": "Claude Sonnet 5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        976,
+        336
+      ],
+      "id": "4ebb076a-cd94-4698-a15d-64c8c2fb8861",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// نجيب رد الـ AI Agent\nconst raw = $input.first().json.output || $input.first().json.text || '';\n\n// إزالة ```json و ``` إذا كانت موجودة\nconst cleaned = raw\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\n// تحويل الرد إلى JSON\nconst parsed = JSON.parse(cleaned);\n\n// نجيب بيانات المنتج من Code in JavaScript السابقة\nconst original = $('Code in JavaScript').first().json;\n\nreturn [\n  {\n    json: {\n      ...parsed,\n      sku: original.sku,\n      productName: original.productName,\n      daysUntilStockout: original.daysUntilStockout\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        96
+      ],
+      "id": "96c6e03e-6bb2-47b8-b228-ec6c351978e7",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1PG2P-cfgvol99mgeyVCzU70A-2Wj4rVrNDBgWvNftXM",
+          "mode": "list",
+          "cachedResultName": "Reorder Suggestions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PG2P-cfgvol99mgeyVCzU70A-2Wj4rVrNDBgWvNftXM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "الورقة1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1PG2P-cfgvol99mgeyVCzU70A-2Wj4rVrNDBgWvNftXM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sku": "={{ $json.sku }}",
+            "productName": "={{ $json.productName }}",
+            "reorderQuantity": "={{ $json.reorder_quantity }}",
+            "urgency": "={{ $json.urgency }}",
+            "reasoning": "={{ $json.reasoning }}",
+            "generatedAt": "={{ $now }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "productName",
+              "displayName": "productName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reorderQuantity",
+              "displayName": "reorderQuantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "urgency",
+              "displayName": "urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reasoning",
+              "displayName": "reasoning",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "generatedAt",
+              "displayName": "generatedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        96
+      ],
+      "id": "9ca9495d-25ff-473e-8196-7c75ba9f65ae",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "z8CNmElJqux4zhsn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "1120179307",
+        "text": "=📦 اقتراح إعادة طلب ({{ $json.urgency }})\n\nالمنتج: {{ $json.productName }}\nمتبقي: {{ $json.daysUntilStockout }} يوم\nالكمية المقترحة: {{ $json.reorderQuantity }}\nالسبب: {{ $json.reasoning }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1696,
+        96
+      ],
+      "id": "e0cc280d-26b3-42a0-8068-5e01be0cb8c9",
+      "name": "Send a text message",
+      "webhookId": "a692ca80-060f-4546-8829-0c29a6eadb95",
+      "credentials": {
+        "telegramApi": {
+          "id": "61a0UZm9IJmhQsDP",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "eff01f8c-ed95-47c9-a0d5-318516782613",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bb766294e56f79392fb7c3f41bdf12f02742dc223fc678d2c034018401269105"
+  },
+  "nodeGroups": [],
+  "id": "4vMxRCEv3r8lq6id",
+  "tags": []
+}
