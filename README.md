@@ -2,7 +2,7 @@
 
 I built this n8n workflow to monitor inventory levels using stock and sales data, estimate how many days remain before a product runs out, and get AI recommendations for reorder quantities.
 
-<img width="886" height="265" alt="image" src="https://github.com/user-attachments/assets/b8bfa865-4f4b-44e2-ab1a-77dd89c6eed8" />
+<img width="886" height="265" alt="Inventory Reorder Management workflow demo" src="https://github.com/user-attachments/assets/b8bfa865-4f4b-44e2-ab1a-77dd89c6eed8" />
 
 ## How it works
 
